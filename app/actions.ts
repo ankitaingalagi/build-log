@@ -25,3 +25,7 @@ export async function createBuildLog(_prevState: ActionState, formData: FormData
   revalidatePath('/')
   return { success: true }
 }
+
+export async function incrementReaction(logId: string, reaction: 'fire' | 'clap' | 'rocket') {
+  await supabase.rpc('increment_reaction', { log_id: logId, reaction })
+}

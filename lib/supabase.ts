@@ -11,4 +11,7 @@ export type BuildLog = {
   description: string
   project_link: string | null
   created_at: string
+  fire_count: number
+  clap_count: number
+  rocket_count: number
 }

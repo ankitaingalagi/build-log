@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useTransition } from 'react'
 import { BuildLog } from '@/lib/supabase'
+import { incrementReaction } from '@/app/actions'
 
 function getInitials(name: string) {
   return name
@@ -34,9 +36,31 @@ function relativeTime(iso: string) {
   return `${weeks} week${weeks === 1 ? '' : 's'} ago`
 }
 
+const REACTIONS = [
+  { key: 'fire',   emoji: '🔥', label: 'Fire' },
+  { key: 'clap',   emoji: '👏', label: 'Clap' },
+  { key: 'rocket', emoji: '🚀', label: 'Rocket' },
+] as const
+
+type ReactionKey = 'fire' | 'clap' | 'rocket'
+
 export default function BuildLogCard({ log }: { log: BuildLog }) {
   const color = avatarColor(log.name)
   const initials = getInitials(log.name)
+  const [isPending, startTransition] = useTransition()
+
+  const [counts, setCounts] = useState<Record<ReactionKey, number>>({
+    fire:   log.fire_count   ?? 0,
+    clap:   log.clap_count   ?? 0,
+    rocket: log.rocket_count ?? 0,
+  })
+
+  function handleReaction(reaction: ReactionKey) {
+    setCounts(prev => ({ ...prev, [reaction]: prev[reaction] + 1 }))
+    startTransition(async () => {
+      await incrementReaction(log.id, reaction)
+    })
+  }
 
   return (
     <div
@@ -78,30 +102,67 @@ export default function BuildLogCard({ log }: { log: BuildLog }) {
           <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{relativeTime(log.created_at)}</span>
         </div>
 
-        <p style={{ color: 'var(--text-primary)', fontSize: '15px', lineHeight: '1.55', margin: '0 0 10px 0' }}>
+        <p style={{ color: 'var(--text-primary)', fontSize: '15px', lineHeight: '1.55', margin: '0 0 12px 0' }}>
           {log.description}
         </p>
 
-        {log.project_link && (
-          <a
-            href={log.project_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              color: 'var(--accent)',
-              fontSize: '13px',
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-            onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-hover)')}
-            onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent)')}
-          >
-            View Project ↗
-          </a>
-        )}
+        {/* Reactions + project link row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {REACTIONS.map(({ key, emoji, label }) => (
+            <button
+              key={key}
+              aria-label={label}
+              disabled={isPending}
+              onClick={() => handleReaction(key)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                padding: '4px 10px',
+                fontSize: '13px',
+                color: 'var(--text-secondary)',
+                cursor: isPending ? 'default' : 'pointer',
+                transition: 'border-color 0.15s, color 0.15s',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget
+                el.style.borderColor = 'var(--accent)'
+                el.style.color = 'var(--text-primary)'
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget
+                el.style.borderColor = 'var(--border)'
+                el.style.color = 'var(--text-secondary)'
+              }}
+            >
+              <span>{emoji}</span>
+              <span>{counts[key]}</span>
+            </button>
+          ))}
+
+          {log.project_link && (
+            <a
+              href={log.project_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                marginLeft: 'auto',
+                color: 'var(--accent)',
+                fontSize: '13px',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-hover)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent)')}
+            >
+              View Project ↗
+            </a>
+          )}
+        </div>
       </div>
     </div>
   )
