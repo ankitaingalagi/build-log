@@ -2,6 +2,8 @@ import { supabase, BuildLog } from '@/lib/supabase'
 import BuildLogForm from './components/BuildLogForm'
 import BuildLogCard from './components/BuildLogCard'
 
+export const dynamic = 'force-dynamic'
+
 async function getBuildLogs(): Promise<BuildLog[]> {
   const { data, error } = await supabase
     .from('BUILD_LOGS')
